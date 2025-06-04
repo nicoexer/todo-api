@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>To-Do Lista</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .done {
+      text-decoration: line-through;
+      color: gray;
+    }
+    button {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📝 ToDo List</h1>
+
+  <form id="taskForm">
+    <input type="text" id="taskTitle" placeholder="Nowe zadanie..." required />
+    <button type="submit">Dodaj</button>
+  </form>
+
+  <ul id="taskList"></ul>
+
+  <script>
+    const taskList = document.getElementById('taskList');
+    const taskForm = document.getElementById('taskForm');
+    const taskTitle = document.getElementById('taskTitle');
+
+    // Pobierz wszystkie zadania z backendu
+    async function fetchTasks() {
+      const res = await fetch('/tasks');
+      const tasks = await res.json();
+
+      taskList.innerHTML = '';
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = task.title;
+        if (task.done) titleSpan.classList.add('done');
+        li.appendChild(titleSpan);
+
+        // Przycisk: oznacz jako ukończone
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = task.done ? '↩️ Cofnij' : '✅ Gotowe';
+        toggleBtn.onclick = async () => {
+          await fetch(`/tasks/${task.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ done: !task.done }),
+          });
+          fetchTasks();
+        };
+        li.appendChild(toggleBtn);
+
+        // Przycisk: usuń zadanie
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '🗑️ Usuń';
+        deleteBtn.onclick = async () => {
+          await fetch(`/tasks/${task.id}`, { method: 'DELETE' });
+          fetchTasks();
+        };
+        li.appendChild(deleteBtn);
+
+        taskList.appendChild(li);
+      });
+    }
+
+    // Dodaj nowe zadanie
+    taskForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const title = taskTitle.value.trim();
+      if (!title) return;
+      await fetch('/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      taskTitle.value = '';
+      fetchTasks();
+    });
+
+    fetchTasks(); // uruchom na starcie
+  </script>
+</body>
+</html>
